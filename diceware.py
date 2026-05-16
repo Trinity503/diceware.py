@@ -56,6 +56,7 @@ WORD_LIST_URLS = {
     "se": "http://x42.com/diceware/diceware-sv.txt",
     "tr": "http://dicewaretr.110mb.com/diceware_tr.txt",
     "nl": "http://theworld.com/~reinhold/DicewareDutch.txt",
+    "de": "https://github.com/dys2p/wordlists-de/raw/refs/heads/main/de-7776-v1-diceware.txt",
 }
 
 def generate_grid(word_list, words=5, specials=0):
