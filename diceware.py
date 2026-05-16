@@ -84,7 +84,8 @@ def generate(word_list, words=5, specials=0):
     # this handles the case where there are more than 6 words in the
     # passphrase and more than 6 characters in the word.
     if specials:
-        split_words = [ map(None, x) for x in words ]
+        split_words = [ list(x) for x in words ]  # Wandelt jedes Wort in eine Liste von Zeichen um
+
         for _ in range(specials):
             # i is the index of the word in which the special character
             # replacement takes place.
