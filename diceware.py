@@ -38,15 +38,15 @@ SOFTWARE.
 
 from math import log, ceil
 from optparse import OptionParser
-from ConfigParser import SafeConfigParser, NoOptionError, NoSectionError
+from configparser import ConfigParser, NoOptionError, NoSectionError
 from random import SystemRandom
 import sys
 import os
 import os.path
-import urllib
+from urllib.request import urlretrieve
 
 
-SPECIAL_CHARS = "~!#$%^&*()-=+[]\{}:;\"'<>?/0123456789"
+SPECIAL_CHARS = r"~!#$%^&*()-=+[]\{}:;\"'<>?/0123456789"
 
 WORD_LIST_URLS = {
     "en": "http://world.std.com/~reinhold/diceware.wordlist.asc",
@@ -129,7 +129,7 @@ def get_word_list(cache_dir, lang="en"):
     except IOError:
         # The word list does not exist => cache it
         word_list_url = WORD_LIST_URLS[lang]
-        urllib.urlretrieve(word_list_url, word_list_path)
+        urlretrieve(word_list_url, word_list_path)
         fobj = open(word_list_path)
 
     return read_word_list(fobj)
@@ -173,7 +173,7 @@ def main():
 
     # Parse config file
     config_file = os.path.join(config_dir, "config")
-    config = SafeConfigParser()
+    config = ConfigParser()
     config.read(config_file)
 
     config_default(config, "defaults", "lang", "en")
@@ -233,7 +233,7 @@ def main():
             sys.exit(1)
         try:
             word_list = read_word_list(fobj)
-        except ValueError, e:
+        except ValueError as e:
             print("error: %s" % e)
             sys.exit(1)
     else:
@@ -249,7 +249,7 @@ def main():
         words, length = generate_grid(word_list, options.words,
                                             options.special)
         for word_row in words:
-            print " ".join([word.ljust(length) for word in word_row])
+            print(" ".join([word.ljust(length) for word in word_row]))
 
 if __name__ == "__main__":
     main()
