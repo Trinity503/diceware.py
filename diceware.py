@@ -46,7 +46,8 @@ import os.path
 from urllib.request import urlretrieve
 
 
-SPECIAL_CHARS = r"~!#$%^&*()-=+[]\{}:;\"'<>?/0123456789"
+SPECIAL_CHARS = r"~!#$%^&*()-=+[]\{}:;\"'<>?/"
+DIGITS = "0123456789"
 
 WORD_LIST_URLS = {
     "en": "http://world.std.com/~reinhold/diceware.wordlist.asc",
@@ -59,12 +60,12 @@ WORD_LIST_URLS = {
     "de": "https://github.com/dys2p/wordlists-de/raw/refs/heads/main/de-7776-v1-diceware.txt",
 }
 
-def generate_grid(word_list, words=5, specials=0):
+def generate_grid(word_list, words=5, specials=0, digits=0):
     longest_word_length = 0
     result = []
     for _ in range(words):
-        word_row, with_specials = generate(word_list, words, specials)
-        if specials:
+        word_row, with_specials = generate(word_list, words, specials, digits)
+        if specials or digits:
             result.append(with_specials)
         else:
             result.append(word_row)
@@ -75,7 +76,7 @@ def generate_grid(word_list, words=5, specials=0):
 
     return result, longest_word_length
 
-def generate(word_list, words=5, specials=0):
+def generate(word_list, words=5, specials=0, digits=0):
     rnd = SystemRandom()
     words = [ rnd.choice(word_list) for _ in range(words) ]
 
@@ -83,23 +84,37 @@ def generate(word_list, words=5, specials=0):
     # exactly the procedure described in the Diceware web page, because
     # this handles the case where there are more than 6 words in the
     # passphrase and more than 6 characters in the word.
-    if specials:
+    if specials or digits:
         split_words = [ list(x) for x in words ]  # Wandelt jedes Wort in eine Liste von Zeichen um
+        if specials: 
+            for _ in range(specials):
+                # i is the index of the word in which the special character
+                # replacement takes place.
+                i = rnd.randrange(len(split_words))
 
-        for _ in range(specials):
-            # i is the index of the word in which the special character
-            # replacement takes place.
-            i = rnd.randrange(len(split_words))
+                # j is the index of the character to be replaced with a special
+                # character.
+                j = rnd.randrange(len(split_words[i]))
 
-            # j is the index of the character to be replaced with a special
-            # character.
-            j = rnd.randrange(len(split_words[i]))
+                # k is the index of the special character
+                k = rnd.randrange(len(SPECIAL_CHARS))
 
-            # k is the index of the special character
-            k = rnd.randrange(len(SPECIAL_CHARS))
+                # Split to individual characters, replace the k'th char, unsplit
+                split_words[i][j] = SPECIAL_CHARS[k]
+        if digits:
+            inserted = 0
+            attempts = 0
+            max_attempts = digits * 100  # Verhindert Endlosschleife
 
-            # Split to individual characters, replace the k'th char, unsplit
-            split_words[i][j] = SPECIAL_CHARS[k]
+            while inserted < digits and attempts < max_attempts:
+                attempts += 1
+                i = rnd.randrange(len(split_words))
+                j = rnd.randrange(len(split_words[i]))
+
+                # Nur ersetzen, wenn das Zeichen noch ein Buchstabe ist
+                if split_words[i][j].isalpha():
+                    split_words[i][j] = rnd.choice(DIGITS)
+                    inserted += 1
 
         with_specials = [ "".join(x) for x in split_words ]
     else:
@@ -181,6 +196,7 @@ def main():
     config_default(config, "defaults", "lang", "en")
     config_default(config, "defaults", "words", "5")
     config_default(config, "defaults", "special", "0")
+    config_default(config, "defaults", "digits", "0")
     config_default(config, "defaults", "file", "")
     config_default(config, "defaults", "separator", " ")
 
@@ -192,8 +208,9 @@ def main():
     try:
         config.getint("defaults", "words")
         config.getint("defaults", "special")
+        config.getint("defaults", "digits")
     except ValueError:
-        print("error: 'words' and 'special' options must have integer values")
+        print("error: 'words', 'special' and 'digits' options must have integer values")
         sys.exit(1)
 
     # Parse command line arguments
@@ -213,6 +230,9 @@ def main():
     parser.add_option("-p", "--separator", dest="separator", type="string", metavar="P",
                       help="specify the separator between words (default: %default)",
                       default=config.get("defaults", "separator"))
+    parser.add_option("-d", "--digits", dest="digits", type="int", metavar="D",
+                  help="insert D digits without overwriting special characters (default: %default)",
+                  default=config.getint("defaults", "digits"))
     linguas = sorted(WORD_LIST_URLS.keys())
     parser.add_option("-l", "--lang", dest="lang", metavar="LANG",
                       type="choice", choices=linguas,
@@ -220,7 +240,7 @@ def main():
                       ") (default: %default)", default=config.get("defaults", "lang"))
 
     options, args = parser.parse_args()
-    if args or options.words < 1 or options.special < 0:
+    if args or options.words < 1 or options.special < 0 or options.digits < 0:
         parser.print_help()
         sys.exit(0)
 
@@ -243,13 +263,13 @@ def main():
 
     if not options.grid:
         words, with_specials = generate(word_list, options.words,
-                                        options.special)
+                                        options.special, options.digits)
         print("passphrase   : %s" % options.separator.join(words))
-        if options.special > 0:
+        if options.special > 0 or options.digits > 0:
             print("with specials: %s" % options.separator.join(with_specials))
     else:
         words, length = generate_grid(word_list, options.words,
-                                            options.special)
+                                            options.special, options.digits)
         for word_row in words:
             print(" ".join([word.ljust(length) for word in word_row]))
 
